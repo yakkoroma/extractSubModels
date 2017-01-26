@@ -18,7 +18,7 @@ SHOWPARENT=false
 COLOR=false
 SORT=false
 UNIQUE=false
-HELP="\nUsage: extractSubmodels [-pcsuh]\n\t-p Print also the list of the parent models\n\t-c Turn on color mode\n\t-s Sort result\n\t-s Unique occurrence [with parent]\n\t-h Print this help\n\n"
+HELP="\nUsage: extractSubmodels [-pcsuh] [FILE]\n\t-p Print also the list of the parent models\n\t-c Turn on color mode\n\t-s Sort result\n\t-s Unique occurrence [with parent]\n\t-h Print this help\n\n"
 BUILD=""
 
 
