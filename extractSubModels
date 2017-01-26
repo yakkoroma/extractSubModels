@@ -1,0 +1,114 @@
+#!/bin/bash 
+# Author: Paolo Di Domenico - Università degli studi di Roma: "La Sapienza" - didomenico.953026@studenti.uniroma1.it
+#Last modified: 26/01/2017
+#This script extract all the files containing a submodel used in a Modelica model
+
+#This is free software: you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation, either version 3 of the License, or
+#(at your option) any later version.
+#It is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+#You should have received a copy of the GNU General Public License
+#along with this software.  If not, see <http://www.gnu.org/licenses/>.
+    
+SHOWPARENT=false
+COLOR=false
+SORT=false
+UNIQUE=false
+HELP="\nUsage: extractSubmodels [-pcsuh]\n\t-p Print also the list of the parent models\n\t-c Turn on color mode\n\t-s Sort result\n\t-s Unique occurrence [with parent]\n\t-h Print this help\n\n"
+BUILD=""
+
+
+BLUE='\033[1;34m'
+RED='\033[1;31m'
+NC='\033[0m' 
+
+FILECOMMENT="/tmp/comment_$$"
+FILECLEAN="/tmp/cleaned_$$"
+FILEFINAL="/tmp/final_$$"
+
+
+function parseFile {  
+    #remove comment [working on temp files]
+    grep -Pzo  "(?s)/\*.*\*/" $1 > $FILECOMMENT
+    comm  -3 <(sort $FILECOMMENT) <(sort $1) > $FILECLEAN
+    #look for all supposed class
+    grep  -Pa "^\s*[A-Z].*"  $FILECLEAN | awk '{ gsub("\\."," ",$1); print $1}' | while read -r line ; do
+        #extract the class name
+        echo $line | awk '{ print $NF} ' | while read -r fileName; do       
+            #query for existing file model
+            fileToParse=$(find . -iname "$fileName.mo")
+            if [[ $fileToParse = *[!\ ]* ]]; then
+                if  $COLOR  &&  ! $SHOWPARENT  ; then
+                    BUILD="$BUILD${RED}$fileToParse${NC}\n"
+                fi
+                if  $COLOR  &&  $SHOWPARENT  ; then
+                    BUILD="$BUILD${RED}$fileToParse${BLUE}\t$1${NC}\n"
+                fi 
+                if ! $COLOR  &&  $SHOWPARENT ; then
+                    BUILD="$BUILD$fileToParse\t$1\n"                
+                fi
+                if  ! $COLOR  &&  ! $SHOWPARENT ; then
+                    BUILD="$BUILD$fileToParse\n"
+                fi
+                parseFile $fileToParse $1
+            fi
+        done 
+    done
+    #print if not sort or unique
+    if ! $SORT && ! $UNIQUE ; then
+        touch $FILEFINAL
+        printf "$BUILD"
+    else
+        #keep for later
+        printf "${BUILD}" >> $FILEFINAL
+    fi
+    
+}
+
+
+
+while getopts ":pscuh" opt; do
+  case "${opt}" in
+    p)
+      SHOWPARENT=true
+      ;;
+    s)
+      SORT=true
+      ;;
+    c)
+      COLOR=true
+      ;;
+    u)
+      UNIQUE=true
+      ;;
+    h)
+      printf "$HELP"
+      exit 1
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      printf "$HELP"
+      exit 1
+      ;;
+  esac
+done
+
+parseFile "${@: -1}"
+
+#post elaboration
+if $SORT && $UNIQUE; then
+     sort -u $FILEFINAL
+fi
+if $UNIQUE && ! $SORT; then
+    awk '!a[$0]++' $FILEFINAL
+fi
+if $SORT && ! $UNIQUE; then
+     sort $FILEFINAL
+fi
+
+#cleaning
+rm $FILECOMMENT $FILECLEAN $FILEFINAL
